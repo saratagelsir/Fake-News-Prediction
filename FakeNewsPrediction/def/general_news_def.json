@@ -1,0 +1,5 @@
+{
+  "with_features_selection": true,
+  "ml_algorithm":  "RF",
+  "stopwords": []
+}

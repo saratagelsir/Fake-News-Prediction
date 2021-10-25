@@ -5,24 +5,26 @@ import string as st
 import sys
 import time
 import traceback
+import unicodedata
 import warnings
 
 import matplotlib.pyplot as plt
 import nltk
 import numpy as np
 import pandas as pd
-import unicodedata
 # import NLPContractions
 from bs4 import BeautifulSoup
 from nltk.stem.wordnet import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
+from sklearn.preprocessing import normalize
+from treeinterpreter import treeinterpreter
 
 nltk.download('stopwords', quiet=True)
 nltk.download('punkt', quiet=True)
 nltk.download('wordnet', quiet=True)
 
 
-def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
+def warn_with_traceback(message, category, filename, lineno, file = None, line = None):
     log = file if hasattr(file, 'write') else sys.stderr
     traceback.print_stack(file=log)
     log.write(warnings.formatwarning(message, category, filename, lineno, line))
@@ -122,3 +124,39 @@ def cleaning_data(x, new_stopwords):
     x = unicodedata.normalize('NFKD', x).encode('ascii', 'ignore').decode('ascii')
 
     return x
+
+
+def get_sorted_contributed_features(model, data, preds):
+    cols = np.array(model.named_steps['vect'].get_feature_names())
+    idx = model.named_steps['genet'].support_
+    predictors = cols[idx]
+
+    # Get transformed data before applying the classifier
+    x_data = data['text']
+    for name, transform in model.steps[:-1]:
+        x_data = transform.transform(x_data)
+
+    num_rows, num_cols = x_data.shape
+    _, _, contributions = treeinterpreter.predict(model.named_steps['clf'], x_data)
+    contr_matrix, feature_ordering = np.full(x_data.shape, 0.0), np.full(x_data.shape, 0)
+    for i in range(num_rows):
+        sorted_contrib = sorted(zip(contributions[i, :, 1], range(num_cols)), key=lambda x: -abs(x[0]))
+        contr_matrix[i, :] = list(map(abs, list(zip(*sorted_contrib))[0]))
+        feature_ordering[i, :] = list(zip(*sorted_contrib))[1]
+
+    contr_matrix = normalize(contr_matrix, axis=1, norm='l1')
+    preds_interpreter = []
+    for i in range(num_rows):
+        idx_pred = np.argmax(preds)
+        pred = ['NOT FAKE', 'FAKE'][(preds[i, 1] >= 0.5)]
+        pred_proba = preds[i, idx_pred] * 100
+        idx_feature_orders = feature_ordering[i, :10]
+        contributed_features = predictors[idx_feature_orders]
+        contributed_weights = contr_matrix[i, :10]
+        msg_str = 'The news provided most likely is %s with %.1f%% confidence.\nContributed Factors:' % (pred, pred_proba)
+        for k in range(10):
+            msg_str = '%s\n      %02d. %s: %f' % (msg_str, (k + 1), contributed_features[k], contributed_weights[k])
+
+        preds_interpreter.append(msg_str)
+
+    return preds_interpreter

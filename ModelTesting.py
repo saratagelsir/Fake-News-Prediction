@@ -1,28 +1,21 @@
 import os
 import sys
 
-import gradio as gr
-
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from FakeNewsPrediction.FakeNewsPrediction import FakeNewsPrediction
 
-
-def main_caller(news, news_type):
+if __name__ == '__main__':
     # Define the caller json string
-    modelrun = news_type.lower().replace(' ', '_') + '_prediction'
+    modelrun = sys.argv[1] if len(sys.argv) > 1 else 'general_news_prediction'
+    # modelrun = sys.argv[1] if len(sys.argv) > 1 else 'covid19_news_prediction'
+
+    # Define the caller json string
+    news = 'https://www.bbc.com/news/world-africa-59033142'
     caller_string = '{"modelrun":"' + modelrun + '","news_contents":"' + news + '"}'
 
+    # Run the model: python ModelTesting [Model_Run]
     mdl = FakeNewsPrediction()
-    model_pred = mdl.main(caller_string)
-    model_output = 'The news provided most likely is %s' % (['NOT FAKE', 'FAKE'][model_pred[0]])
-    return model_output
+    model_output = mdl.main(caller_string)
 
-
-info = 'Machine learning based app for fake news detection'
-iface = gr.Interface(
-    fn=main_caller,
-    inputs=[gr.inputs.Textbox(lines=20, placeholder="News Text or URL Here..."), gr.inputs.Radio(['General News', 'COVID19 News'])],
-    outputs='text',
-    title='Fake News Prediction',
-    description=info)
-iface.launch()
+# python ModelTesting.py AoG_PotlineA_prediction
+# python ModelTesting.py AoG_PotlineA_training

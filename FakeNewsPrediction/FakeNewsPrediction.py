@@ -1,17 +1,16 @@
 import itertools
 import json
 import shutil
-import requests
 
 import joblib
+import requests
 from genetic_selection import GeneticSelectionCV
-from newspaper import Article
 from newspaper import fulltext
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, precision_score, recall_score, plot_roc_curve
-from mlxtend.plotting import plot_confusion_matrix
+from sklearn.metrics import plot_confusion_matrix
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import GaussianNB, MultinomialNB
 from sklearn.pipeline import Pipeline
@@ -75,8 +74,7 @@ class FakeNewsPrediction(object):
         self.data = pd.DataFrame()
         self.model = type('', (), {})()
 
-        log_writer('User %s started %s %s at %s' % (
-            self.user, self.model_name, __version__, time.strftime('%Y-%m-%d %H:%M:%S')))
+        log_writer('User %s started %s %s at %s' % (self.user, self.model_name, __version__, time.strftime('%Y-%m-%d %H:%M:%S')))
         log_writer('The model directory is: $MODELDIR=%s' % self.modeldir)
         log_writer('An empty object from the class %s is created' % self.model_name)
 
@@ -209,8 +207,10 @@ class FakeNewsPrediction(object):
         # Load trained model and predict
         self.model = joblib.load(self.trained_model_file)
 
-        model_output = self.model.predict(self.data['text'])
-        return model_output
+        x_data = self.data['text'].copy(deep=True)
+        preds = self.model.predict_proba(x_data)
+        preds_interpreter = get_sorted_contributed_features(self.model, self.data, preds)
+        return preds_interpreter
 
     def main(self, caller_json):
         status = 1
@@ -238,8 +238,7 @@ class FakeNewsPrediction(object):
                 time.strftime('%Y-%m-%d %H:%M:%S'), (time.time() - self.model_start))
         else:
             input_json = '"input_json": %s' % caller_json
-            model_output = '{%s, "status": %d, "description": "%s", "full_description": "%s"}' % (
-                input_json, status, err_short, description)
+            model_output = '{%s, "status": %d, "description": "%s", "full_description": "%s"}' % (input_json, status, err_short, description)
 
         log_writer(description)
         return model_output

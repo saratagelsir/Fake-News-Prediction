@@ -25,7 +25,7 @@ warnings.filterwarnings('ignore')
 plt.rcParams.update({'figure.max_open_warning': 0})
 
 __license__ = 'GPL'
-__version__ = 'v0.0'
+__version__ = 'v0.1'
 __status__ = 'Production'
 __copyright__ = 'xxx'
 __credits__ = ['Sara Suleiman <saratagelsir@gmail.com>']
